@@ -1,4 +1,4 @@
-const CACHE = 'fitzee-v2';
+const CACHE = 'fitzee-v3';
 
 const PRECACHE = [
   './',
@@ -43,6 +43,21 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // Network-first for HTML so updates are always picked up
+  if (e.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Cache-first for everything else (JS, CSS, images, fonts already handled above)
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
